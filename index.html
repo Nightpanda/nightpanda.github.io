@@ -1,0 +1,105 @@
+<!DOCTYPE=html>
+<meta charset="UTF-8">
+<head>
+  <!-- debug for autorefresh -->
+  <!--<meta http-equiv="refresh" content="3">-->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <style>
+    html {
+      font-family: sans-serif;
+      -ms-text-size-adjust: 100%;
+      -webkit-text-size-adjust: 100%;
+    }
+    
+    table {
+      margin-top: 10px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    
+    td, th {
+      width: 50%;
+      border: 1px solid #999;
+      vertical-align: middle;
+    }
+    
+    button {
+      border: 2px solid #999;
+      background: #65a9d7;
+      font-size: 120%;
+      padding: 20px 40px;
+    }
+    p {
+      font-size: 120%;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div id="buttons">
+      <button id="1.0" onclick="addWaterEvent(id)" class="button">One liter</button>
+      <button id="0.25" onclick="addWaterEvent(id)" class="button">2.5 dl</button>
+    </div>
+    <h1>Water:</h1>
+    <p id="drinkCounter"></p>
+  </div>
+  <!-- this is for debugging only
+  <br>
+  <button onclick="clearStorage()" style="background-color: #FEEFB3; color: #9F6000">DebugClear</button>
+  Debugging ends -->
+  <script>
+  //scripts are here so they happen after the page has been loaded so we have the proper DOM references
+	var localEvents = localStorage;
+  var latestKey = 0;
+  var keys = [];
+
+  function createStorageKeysArray(){
+    var len = localEvents.length;
+    if (len == 0) return;
+    for (var i = 0; i < len; i++){
+      keys.push(localEvents.key( i ));
+      if (keys[i] > latestKey) latestKey = parseInt(keys[i]);
+    }
+  }
+
+  function setTodayWaterAmount(amountFloat){
+    var time = new Date;
+    var keyByDate = time.toLocaleDateString();
+    localEvents.setItem(keyByDate, amountFloat.toString());
+  }
+
+  function updateWaterCounter(){
+    if (!fetchTodayWaterAmount()){
+      setTodayWaterAmount(0.0)
+    }
+    document.getElementById("drinkCounter").textContent = fetchTodayWaterAmount();
+  }
+
+  function fetchTodayWaterAmount(){
+    var time = new Date;
+    var keyByDate = time.toLocaleDateString();
+    //Get current amount of water today
+    var waterDrankToday = localEvents.getItem(keyByDate);
+    return waterDrankToday;
+
+  }
+
+  function addWaterEvent(amount){
+    var litersToAdd = parseFloat(amount);
+    var waterDrankToday = fetchTodayWaterAmount();
+    //Add water to the sum
+    waterDrankToday = parseFloat(waterDrankToday) + litersToAdd;
+    //Store the sum
+    setTodayWaterAmount(waterDrankToday);
+    updateWaterCounter();
+  }
+
+  function clearStorage(){
+    localEvents.clear();
+  }
+
+  updateWaterCounter();
+
+</script>
+</body>
