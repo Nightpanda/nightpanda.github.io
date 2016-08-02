@@ -28,21 +28,37 @@
       background: #65a9d7;
       font-size: 120%;
       padding: 20px 40px;
+      margin: 0px 10px;
     }
     p {
       font-size: 120%;
     }
+    .container {
+    
+   }
+
+    .row {
+    margin: 10px;
+}
+    
   </style>
 </head>
 
 <body>
   <div class="container">
-    <div id="buttons">
+    <div id="buttons" class="row">
       <button id="1.0" onclick="addWaterEvent(id)" class="button">One liter</button>
       <button id="0.25" onclick="addWaterEvent(id)" class="button">2.5 dl</button>
     </div>
+    <div id=slider class="row">
+      <input oninput="outputUpdate(value)" type="range" id="waterSlider" step="0.1" min="0.1" max="2.0" value="0"><output for="waterSlider" id="sliderAmount"></output><button id="sliderButton" onclick="addWaterSliderEvent()" class="button">Save slider</button>
+    </div> 
+    
+     <div id="counter" class="row">
     <h1>Water:</h1>
+
     <p id="drinkCounter"></p>
+    </div>
   </div>
   <!-- this is for debugging only
   <br>
@@ -53,6 +69,11 @@
 	var localEvents = localStorage;
   var latestKey = 0;
   var keys = [];
+
+  function outputUpdate(amount) {
+	  document.querySelector('#sliderAmount').value = amount;
+    localEvents.setItem("previousSliderValue", amount.toString());
+  }
 
   function createStorageKeysArray(){
     var len = localEvents.length;
@@ -82,7 +103,6 @@
     //Get current amount of water today
     var waterDrankToday = localEvents.getItem(keyByDate);
     return waterDrankToday;
-
   }
 
   function addWaterEvent(amount){
@@ -95,11 +115,18 @@
     updateWaterCounter();
   }
 
+  function addWaterSliderEvent(){
+    var amount = document.getElementById('waterSlider').value;
+    addWaterEvent(amount); 
+  }
+  
+
   function clearStorage(){
     localEvents.clear();
   }
 
   updateWaterCounter();
+  outputUpdate(localEvents.getItem("previousSliderValue"));
 
 </script>
 </body>
