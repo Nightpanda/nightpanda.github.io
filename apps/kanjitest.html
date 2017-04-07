@@ -89,13 +89,13 @@
     kanji = randomKanji.kanji;
     meaning = randomKanji.meaning;
     meanings = meaning.split(",")
-    meanings = meanings.map(x => x.trim());
+    meanings = meanings.map(x => x.trim().toLowerCase());
     displayContents(kanji, "kanjiQuestion");
   }
   
   function checkAnswer() {
     var el = document.getElementById("answer");
-    var answer = el.value.trim();
+    var answer = el.value.trim().toLowerCase();
     if (meanings.indexOf(answer) > -1) {
         displayContents("You got it! " + meaning, "result");    
     }
