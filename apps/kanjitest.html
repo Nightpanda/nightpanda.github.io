@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Read File (via User Input selection)</title>
+    <script type="text/javascript">
+    var reader; //GLOBAL File Reader object for demo purpose only
+    var kanjiList;
+    var randomKanji;
+    var kanji;
+    var meaning;
+    var meanings;
+
+    /**
+     * Check for the various File API support.
+     */
+    function checkFileAPI() {
+        if (window.File && window.FileReader && window.FileList && window.Blob) {
+            reader = new FileReader();
+            return true; 
+        } else {
+            alert('The File APIs are not fully supported by your browser. Fallback required.');
+            return false;
+        }
+    }
+
+    /**
+     * read text input
+     */
+    function readText(filePath) {
+        var output = ""; //placeholder for text output
+        if(filePath.files && filePath.files[0]) {           
+            reader.onload = function (e) {
+                output = e.target.result;
+                kanjiList = JSON.parse(output);
+                //displayContents(output);
+            };//end onload()
+            reader.readAsText(filePath.files[0]);
+        }//end if html5 filelist support
+        else if(ActiveXObject && filePath) { //fallback to IE 6-8 support via ActiveX
+            try {
+                reader = new ActiveXObject("Scripting.FileSystemObject");
+                var file = reader.OpenTextFile("./kanji/kanjiMeanings.json", 1); //ActiveX File Object
+                output = file.ReadAll(); //text contents of file
+                file.Close(); //close file "input stream"
+                kanjiList = JSON.parse(output);
+                //displayContents(output);
+            } catch (e) {
+                if (e.number == -2146827859) {
+                    alert('Unable to access local files due to browser security settings. ' + 
+                     'To overcome this, go to Tools->Internet Options->Security->Custom Level. ' + 
+                     'Find the setting for "Initialize and script ActiveX controls not marked as safe" and change it to "Enable" or "Prompt"'); 
+                }
+            }       
+        }
+        else { //this is where you could fallback to Java Applet, Flash or similar
+            return false;
+        }       
+        return true;
+    }   
+
+  function randomInt (low, high) {
+      return Math.floor(Math.random() * (high - low) + low);
+  }
+
+  function randomizeKanji () {
+      return kanjiList[randomInt(0, kanjiList.length)];
+  }
+
+   
+  function displayContents(txt, id) {
+    var el = document.getElementById(id); 
+    el.innerHTML = txt; //display output in DOM
+  }   
+  
+  function newQuestion(){
+    randomKanji = randomizeKanji();
+    kanji = randomKanji.kanji;
+    meaning = randomKanji.meaning;
+    meanings = meaning.split(",")
+    meanings = meanings.map(x => x.trim());
+    displayContents(kanji, "kanjiQuestion");
+  }
+  
+  function checkAnswer() {
+    var el = document.getElementById("answer");
+    var answer = el.value.trim();
+    if (meanings.indexOf(answer) > -1) {
+        displayContents("You got it! " + meaning, "result");    
+    }
+    else {
+      displayContents("Wroooong! Right answer was " + meaning, "result");
+    }
+  }
+  
+  
+  readText("./kanji/kanjiMeanings.json")
+</script>
+</head>
+<body onload="checkFileAPI();">
+    <div id="container">    
+        <input type="file" onchange='readText(this)' />
+            <br/>
+        <input type="button" onclick="newQuestion()" value="New Question!" />
+            <br/>
+        <input type="button" onclick="checkAnswer()" value="Check!" />
+        <br/>
+        <hr/>
+        <p id="result"></p>   
+        <h3>What is the meaning of this kanji?:</h3>
+        <h2 id="kanjiQuestion"></h2>
+        <br/>
+        <input type="text" id="answer" />
+        <div id="main">
+            ...
+        </div>
+    </div>
+</body>
+</html>
