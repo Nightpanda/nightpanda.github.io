@@ -9,6 +9,18 @@
     var kanji;
     var meaning;
     var meanings;
+    
+    var request = new XMLHttpRequest();
+    request.open('GET', 'https://raw.githubusercontent.com/Nightpanda/nightpanda.github.io/master/apps/kanji/kanjiMeanings.json', true);
+    request.send(null);
+    request.onreadystatechange = function () {
+        if (request.readyState === 4 && request.status === 200) {
+            var type = request.getResponseHeader('Content-Type');
+            if (type.indexOf("text") !== 1) {
+                kanjiList = JSON.parse(request.responseText);
+            }
+        }
+    }
 
     /**
      * Check for the various File API support.
@@ -92,8 +104,6 @@
     }
   }
   
-  
-  readText("./kanji/kanjiMeanings.json")
 </script>
 </head>
 <body onload="checkFileAPI();">
