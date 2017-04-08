@@ -1,7 +1,46 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Read File (via User Input selection)</title>
+    <title>Test Your Knowledge Of Kanji Translations</title>
+    <style>
+        html {
+            font-family: sans-serif;
+            -ms-text-size-adjust: 100%;
+            -webkit-text-size-adjust: 100%;
+        }
+        
+        table {
+            margin-top: 10px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        
+        td, th {
+            width: 50%;
+            border: 1px solid #999;
+            vertical-align: middle;
+        }
+        
+        button {
+            border: 2px solid #999;
+            background: #65a9d7;
+            font-size: 120%;
+            padding: 20px 40px;
+            margin: 0px 10px;
+        }
+        p#kanjiQuestion {
+            font-size: 300%;
+        }
+        #container {
+            text-align: center;
+        
+    }
+
+        .row {
+        margin: 10px;
+    }
+    
+    </style>  
     <script type="text/javascript">
     var reader; //GLOBAL File Reader object for demo purpose only
     var kanjiList;
@@ -18,6 +57,9 @@
             var type = request.getResponseHeader('Content-Type');
             if (type.indexOf("text") !== 1) {
                 kanjiList = JSON.parse(request.responseText);
+            }
+            else {
+                document.getElementById("getFileButton").hidden = false;    
             }
         }
     }
@@ -91,6 +133,7 @@
     meanings = meaning.split(",")
     meanings = meanings.map(x => x.trim().toLowerCase());
     displayContents(kanji, "kanjiQuestion");
+    document.getElementById("questionBlock").hidden = false;
   }
   
   function checkAnswer() {
@@ -100,28 +143,32 @@
         displayContents("You got it! " + meaning, "result");    
     }
     else {
-      displayContents("Wroooong! Right answer was " + meaning, "result");
+      displayContents("Wroooong! Right answer for the kanji " + kanji + " was " + meaning, "result");
     }
+    newQuestion();
   }
   
 </script>
 </head>
 <body onload="checkFileAPI();">
     <div id="container">    
-        <input type="file" onchange='readText(this)' />
+        <input type="file" onchange='readText(this)' hidden=true id="getFileButton" />
             <br/>
-        <input type="button" onclick="newQuestion()" value="New Question!" />
+        <input type="button" onclick="newQuestion()" value="Start" />
             <br/>
         <input type="button" onclick="checkAnswer()" value="Check!" />
         <br/>
         <hr/>
-        <p id="result"></p>   
-        <h3>What is the meaning of this kanji?:</h3>
-        <h2 id="kanjiQuestion"></h2>
-        <br/>
-        <input type="text" id="answer" />
-        <div id="main">
-            ...
+        <div id="questionBlock" hidden=true>
+            <p id="result"></p>   
+            <h3>What is the meaning of this kanji?:</h3>
+            <p id="kanjiQuestion"></p>
+            <br/>
+            <label>Meaning?</label>
+            <input type="text" id="answer" />
+            <div id="main">
+                ...
+            </div>
         </div>
     </div>
 </body>
