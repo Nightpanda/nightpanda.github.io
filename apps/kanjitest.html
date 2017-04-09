@@ -42,27 +42,38 @@
     
     </style>  
     <script type="text/javascript">
+    
+    function readFileToVariable(fileUrl, variableName){
+        var request = new XMLHttpRequest();
+        request.open('GET', fileUrl, true);
+        request.send(null);
+        request.onreadystatechange = function () {
+        if (request.readyState === 4 && request.status === 200) {
+            var type = request.getResponseHeader('Content-Type');
+            if (type.indexOf("text") !== 1) {
+                variableName = JSON.parse(request.responseText);
+            }
+            if (variableName.length == 0){
+                document.getElementById("getFileButton").hidden = false;    
+            }
+        }
+        else {
+            document.getElementById("getFileButton").hidden = false;
+        }
+    }    
+    }
+    
     var reader; //GLOBAL File Reader object for demo purpose only
+    var allList;
     var kanjiList;
+    var aozoraList;
     var randomKanji;
     var kanji;
     var meaning;
     var meanings;
     
-    var request = new XMLHttpRequest();
-    request.open('GET', 'https://raw.githubusercontent.com/Nightpanda/nightpanda.github.io/master/apps/kanji/kanjiMeanings.json', true);
-    request.send(null);
-    request.onreadystatechange = function () {
-        if (request.readyState === 4 && request.status === 200) {
-            var type = request.getResponseHeader('Content-Type');
-            if (type.indexOf("text") !== 1) {
-                kanjiList = JSON.parse(request.responseText);
-            }
-            else {
-                document.getElementById("getFileButton").hidden = false;    
-            }
-        }
-    }
+    readFileToVariable('https://raw.githubusercontent.com/Nightpanda/nightpanda.github.io/master/apps/kanji/kanjiMeanings.json', allList);
+    readFileToVariable('https://raw.githubusercontent.com/Nightpanda/nightpanda.github.io/master/apps/kanji/aozoraMeanings.json', aozoraList)
 
     /**
      * Check for the various File API support.
@@ -80,12 +91,13 @@
     /**
      * read text input
      */
-    function readText(filePath) {
+    function readText(filePath, list) {
         var output = ""; //placeholder for text output
         if(filePath.files && filePath.files[0]) {           
             reader.onload = function (e) {
                 output = e.target.result;
-                kanjiList = JSON.parse(output);
+                list = JSON.parse(output);
+                newQuestion(list);   
                 //displayContents(output);
             };//end onload()
             reader.readAsText(filePath.files[0]);
@@ -93,10 +105,11 @@
         else if(ActiveXObject && filePath) { //fallback to IE 6-8 support via ActiveX
             try {
                 reader = new ActiveXObject("Scripting.FileSystemObject");
-                var file = reader.OpenTextFile("./kanji/kanjiMeanings.json", 1); //ActiveX File Object
+                var file = reader.OpenTextFile(filePath, 1); //ActiveX File Object
                 output = file.ReadAll(); //text contents of file
                 file.Close(); //close file "input stream"
-                kanjiList = JSON.parse(output);
+                list = JSON.parse(output);
+                newQuestion(list);   
                 //displayContents(output);
             } catch (e) {
                 if (e.number == -2146827859) {
@@ -108,7 +121,7 @@
         }
         else { //this is where you could fallback to Java Applet, Flash or similar
             return false;
-        }       
+        }  
         return true;
     }   
 
@@ -126,7 +139,8 @@
     el.innerHTML = txt; //display output in DOM
   }   
   
-  function newQuestion(){
+  function newQuestion(list){
+    kanjiList = list;
     randomKanji = randomizeKanji();
     kanji = randomKanji.kanji;
     meaning = randomKanji.meaning;
@@ -145,18 +159,20 @@
     else {
       displayContents("Wroooong! Right answer for the kanji " + kanji + " was " + meaning, "result");
     }
-    newQuestion();
+    newQuestion(kanjiList);
   }
-  
 </script>
 </head>
 <body onload="checkFileAPI();">
     <div id="container">    
-        <input type="file" onchange='readText(this)' hidden=true id="getFileButton" />
+        <input type="file" onchange='readText(this, kanjiList)' hidden=true id="getFileButton" />
             <br/>
-        <input type="button" onclick="newQuestion()" value="Start" />
+        <input type="button" onclick="newQuestion(allList)" value="Start All" />
             <br/>
-        <input type="button" onclick="checkAnswer()" value="Check!" />
+        <input type="button" onclick="newQuestion(aozoraList)" value="Start Aozora" />
+        
+            <br/>
+        <input type="button" onclick="checkAnswer()" value="Check!" id="checkButton"/>
         <br/>
         <hr/>
         <div id="questionBlock" hidden=true>
@@ -166,8 +182,9 @@
             <br/>
             <label>Meaning?</label>
             <input type="text" id="answer" />
+            <hr/>
             <div id="main">
-                ...
+                <p> Aozora ( ordered by kanji frequency in Japanese fiction and non-fiction books; I recommend this list if you're starting to learn kanji [<a href="https://github.com/scriptin/topokanji">source github</a>])</p>
             </div>
         </div>
     </div>
