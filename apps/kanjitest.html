@@ -2,60 +2,25 @@
 <html>
   <head>
     <title>Test Your Knowledge Of Kanji Translations</title>
-    <style>
-        html {
-            font-family: sans-serif;
-            -ms-text-size-adjust: 100%;
-            -webkit-text-size-adjust: 100%;
-        }
-        
-        table {
-            margin-top: 10px;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-        
-        td, th {
-            width: 50%;
-            border: 1px solid #999;
-            vertical-align: middle;
-        }
-        
-        button {
-            border: 2px solid #999;
-            background: #65a9d7;
-            font-size: 120%;
-            padding: 20px 40px;
-            margin: 0px 10px;
-        }
-        p#kanjiQuestion {
-            font-size: 300%;
-        }
-        #container {
-            text-align: center;
-        
-    }
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
 
-        .row {
-        margin: 10px;
-    }
-    
-    </style>  
     <script type="text/javascript">
-    
+
     function readFileToVariable(fileUrl){
-        var request = new XMLHttpRequest();    
+        var request = new XMLHttpRequest();
         request.open('GET', fileUrl, false);
         request.send(null);
-        
+
         if (request.status === 200) {
-            return JSON.parse(request.responseText);             
+            return JSON.parse(request.responseText);
         }
         else {
             document.getElementById("getFileButton").hidden = false;
-        } 
+        }
     }
-    
+
     var reader; //GLOBAL File Reader object for demo purpose only
     var allList;
     var kanjiList;
@@ -64,17 +29,17 @@
     var kanji;
     var meaning;
     var meanings;
-    
+
     allList = readFileToVariable('https://raw.githubusercontent.com/Nightpanda/nightpanda.github.io/master/apps/kanji/kanjiMeanings.json');
     aozoraList = readFileToVariable('https://raw.githubusercontent.com/Nightpanda/nightpanda.github.io/master/apps/kanji/aozoraMeanings.json');
-    
+
     /**
      * Check for the various File API support.
      */
     function checkFileAPI() {
         if (window.File && window.FileReader && window.FileList && window.Blob) {
             reader = new FileReader();
-            return true; 
+            return true;
         } else {
             alert('The File APIs are not fully supported by your browser. Fallback required.');
             return false;
@@ -86,11 +51,11 @@
      */
     function readText(filePath, list) {
         var output = ""; //placeholder for text output
-        if(filePath.files && filePath.files[0]) {           
+        if(filePath.files && filePath.files[0]) {
             reader.onload = function (e) {
                 output = e.target.result;
                 list = JSON.parse(output);
-                newQuestion(list);   
+                newQuestion(list);
                 //displayContents(output);
             };//end onload()
             reader.readAsText(filePath.files[0]);
@@ -102,21 +67,21 @@
                 output = file.ReadAll(); //text contents of file
                 file.Close(); //close file "input stream"
                 list = JSON.parse(output);
-                newQuestion(list);   
+                newQuestion(list);
                 //displayContents(output);
             } catch (e) {
                 if (e.number == -2146827859) {
-                    alert('Unable to access local files due to browser security settings. ' + 
-                     'To overcome this, go to Tools->Internet Options->Security->Custom Level. ' + 
-                     'Find the setting for "Initialize and script ActiveX controls not marked as safe" and change it to "Enable" or "Prompt"'); 
+                    alert('Unable to access local files due to browser security settings. ' +
+                     'To overcome this, go to Tools->Internet Options->Security->Custom Level. ' +
+                     'Find the setting for "Initialize and script ActiveX controls not marked as safe" and change it to "Enable" or "Prompt"');
                 }
-            }       
+            }
         }
         else { //this is where you could fallback to Java Applet, Flash or similar
             return false;
-        }  
+        }
         return true;
-    }   
+    }
 
   function randomInt (low, high) {
       return Math.floor(Math.random() * (high - low) + low);
@@ -127,10 +92,10 @@
   }
 
   function displayContents(txt, id) {
-    var el = document.getElementById(id); 
+    var el = document.getElementById(id);
     el.innerHTML = txt; //display output in DOM
   }
-  
+
   function newQuestion(list){
     kanjiList = list;
     randomKanji = randomizeKanji();
@@ -141,44 +106,68 @@
     displayContents(kanji, "kanjiQuestion");
     document.getElementById("questionBlock").hidden = false;
   }
-  
+
   function checkAnswer() {
     var el = document.getElementById("answer");
     var answer = el.value.trim().toLowerCase();
     if (meanings.indexOf(answer) > -1) {
-        displayContents("You got it! " + meaning, "result");    
+        displayContents("You got it! " + meaning, "result");
     }
     else {
       displayContents("Wroooong! Right answer for the kanji " + kanji + " was " + meaning, "result");
     }
     newQuestion(kanjiList);
   }
-</script>
+    </script>
+    <style>
+      #kanjiQuestion {
+        font-size: 300%
+      }
+
+      </style>
 </head>
 <body onload="checkFileAPI();">
-    <div id="container">    
-        <input type="file" onchange='readText(this, kanjiList)' hidden=true id="getFileButton" />
-            <br/>
-        <input type="button" onclick="newQuestion(allList)" value="Start All" />
-            <br/>
-        <input type="button" onclick="newQuestion(aozoraList)" value="Start Aozora" />
-        
-            <br/>
-        <input type="button" onclick="checkAnswer()" value="Check!" id="checkButton"/>
-        <br/>
-        <hr/>
-        <div id="questionBlock" hidden=true>
-            <p id="result"></p>   
-            <h3>What is the meaning of this kanji?:</h3>
-            <p id="kanjiQuestion"></p>
-            <br/>
-            <label>Meaning?</label>
-            <input type="text" id="answer" />
-            <hr/>
-            <div id="main">
-                <p> Aozora ( ordered by kanji frequency in Japanese fiction and non-fiction books; I recommend this list if you're starting to learn kanji [<a href="https://github.com/scriptin/topokanji">source github</a>])</p>
+  <div class="container">
+    <div class="row">
+      <input class="btn btn-default" type="file" onchange='readText(this, kanjiList)' hidden=true id="getFileButton" />
+    </div>
+    <div class="row">
+      <input class="btn btn-default" type="button" onclick="newQuestion(allList)" value="Start All" />
+    </div>
+    <div class="row">
+      <input class="btn btn-default" type="button" onclick="newQuestion(aozoraList)" value="Start Aozora" />
+    </div>
+    <div class="row">
+      <input class="btn btn-default" type="button" onclick="checkAnswer()" value="Check!" id="checkButton"/>
+    </div>
+    <div class="row">
+      <hr/>
+      <div id="questionBlock" hidden=true>
+        <div class="row">
+          <p id="result"></p>
+        </div>
+        <div class="row">
+          <h3>What is the meaning of this kanji?:</h3>
+        </div>
+        <div class="row">
+          <p id="kanjiQuestion"></p>
+        </div>
+        <div class="row">
+          <form class="form-horizontal">
+            <div class="form-group form-group-lg">
+              <label class="col-sm-2 control-label">Meaning?</label>
+              <div class="col-sm-10">
+                <input class="form-control" type="text" id="answer" />
+              </div>
             </div>
         </div>
+      </div>
+
+        <div class="row">
+          <hr/>
+          <p> Aozora ( ordered by kanji frequency in Japanese fiction and non-fiction books; I recommend this list if you're starting to learn kanji [<a href="https://github.com/scriptin/topokanji">source github</a>])</p>
+        </div>
+      </div>
     </div>
 </body>
 </html>
