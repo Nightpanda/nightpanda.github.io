@@ -23,6 +23,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-around;
+            text-align: center;
         }
 
         h1 {
@@ -162,19 +163,85 @@
         window.onload = function () {
             renderColors();
         };
+        // JavaScript code for the race game
+        var colorCounts = {};
+        var raceStarted = false;
+
+        function startRace() {
+            raceStarted = true;
+            var raceResult = document.getElementById("raceResult");
+            if (chosenColors.length === 0) {
+                raceResult.innerText = "Valitse vähintään yksi väri!";
+                return;
+            }
+
+            // Reset color counts
+            colorCounts = {};
+            chosenColors.forEach(color => {
+                colorCounts[color.color] = 0;
+            });
+
+            // Start the race
+            var raceInterval = setInterval(function () {
+                if (raceStarted) {
+                    var randomIndex = Math.floor(Math.random() * chosenColors.length);
+                    var randomColor = chosenColors[randomIndex];
+                    colorCounts[randomColor.color]++;
+                    updateRaceBars();
+                } else {
+                    clearInterval(raceInterval)
+                }
+            }, 10);
+        }
+
+        function updateRaceBars() {
+            var raceBar = document.querySelector(".race-bar");
+            raceBar.innerHTML = "";
+            var totalCounts = Object.values(colorCounts);
+            var countWidth = window.innerWidth / 100
+            var maxCount = Math.max(...totalCounts);
+            chosenColors.forEach(color => {
+                var colorBar = document.createElement("div");
+                colorBar.className = "color-bar";
+                colorBar.style.backgroundColor = color.color;
+                const newWidth = colorCounts[color.color] * countWidth
+                if (newWidth >= window.innerWidth) {
+                    raceStarted = false;
+                    var winningColor = Object.keys(colorCounts).reduce((a, b) => colorCounts[a] > colorCounts[b] ? a : b);
+                    document.getElementById("raceResult").innerText = "Voittava väri: " + chosenColors.find(color => color.color === winningColor).text;
+                }
+                colorBar.style.width = newWidth + "px";
+                colorBar.style.height = "10px";
+                raceBar.appendChild(colorBar);
+            });
+            if (maxCount >= 100) {
+            }
+        }
     </script>
 </head>
 
 <body>
     <div class="container">
-        <a href="index2.html">Ralli</a>
+        <a href="index.html">Arpoja</a>
         <div id="selectableColors"></div>
-        <button onclick="getRandomColor()">Arvo väri</button>
+        <hr />
+        <hr />
         <div class="colors">
             <div id="chosenColors"></div>
         </div>
-        <p>Väri: <span id="display"></span></p>
-    </div>
+        <hr />
+        <hr />
+        <div class="race-container">
+            <div class="race-controls">
+                <button onclick="startRace()">Ralli</button>
+            </div>
+            <div class="race-bar">
+                <!-- Race bars will be added here dynamically -->
+            </div>
+            <div class="race-result" id="raceResult"></div>
+        </div>
+        <script>
+        </script>
 </body>
 
 </html>
