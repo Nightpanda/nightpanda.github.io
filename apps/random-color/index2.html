@@ -16,6 +16,11 @@
             margin: 0;
         }
 
+        input {
+            margin: 0.4rem;
+        }
+
+
         .container {
             height: 100vh;
             width: 100vw;
@@ -93,6 +98,7 @@
             { color: "green", text: "vihreä" },
             { color: "blue", text: "sininen" },
             { color: "orange", text: "oranssi" },
+            { color: "red", text: "punainen" },
         ];
         var chosenColors = [];
 
@@ -167,6 +173,31 @@
         var colorCounts = {};
         var raceStarted = false;
 
+        function hideElementsDuringRace() {
+            var raceButton = document.getElementById('race-button')
+            var selectContainer = document.getElementById('selectableColors')
+            var chosenColors = document.getElementById('colorsContainer')
+            var link = document.getElementById('navLink');
+            var slider = document.getElementById('intervalSlider')
+            slider.style.display = 'none'
+            link.style.display = 'none';
+            raceButton.style.display = 'none';
+            selectContainer.style.display = 'none';
+            chosenColors.style.display = 'none';
+        }
+        function showElementsAfterRace() {
+            var raceButton = document.getElementById('race-button')
+            var selectContainer = document.getElementById('selectableColors')
+            var chosenColors = document.getElementById('colorsContainer')
+            var link = document.getElementById('navLink');
+            var slider = document.getElementById('intervalSlider')
+            slider.style.display = 'inline-block'
+            link.style.display = 'inline-block';
+            raceButton.style.display = 'block';
+            selectContainer.style.display = 'flex';
+            chosenColors.style.display = 'flex';
+        }
+
         function startRace() {
             raceStarted = true;
             var raceResult = document.getElementById("raceResult");
@@ -175,11 +206,15 @@
                 return;
             }
 
+            var interval = document.getElementById("intervalSlider").value;
+
             // Reset color counts
             colorCounts = {};
             chosenColors.forEach(color => {
                 colorCounts[color.color] = 0;
             });
+
+            hideElementsDuringRace()
 
             // Start the race
             var raceInterval = setInterval(function () {
@@ -191,54 +226,58 @@
                 } else {
                     clearInterval(raceInterval)
                 }
-            }, 10);
+            }, interval);
         }
 
         function updateRaceBars() {
             var raceBar = document.querySelector(".race-bar");
             raceBar.innerHTML = "";
             var totalCounts = Object.values(colorCounts);
-            var countWidth = window.innerWidth / 100
+            var countWidth = window.innerWidth / 100;
+
             var maxCount = Math.max(...totalCounts);
-            chosenColors.forEach(color => {
+            chosenColors.forEach((color, index) => {
                 var colorBar = document.createElement("div");
                 colorBar.className = "color-bar";
                 colorBar.style.backgroundColor = color.color;
-                const newWidth = colorCounts[color.color] * countWidth
+                const newWidth = colorCounts[color.color] * countWidth;
                 if (newWidth >= window.innerWidth) {
                     raceStarted = false;
                     var winningColor = Object.keys(colorCounts).reduce((a, b) => colorCounts[a] > colorCounts[b] ? a : b);
                     document.getElementById("raceResult").innerText = "Voittava väri: " + chosenColors.find(color => color.color === winningColor).text;
+                    showElementsAfterRace()
                 }
+                const height = window.innerHeight / chosenColors.length;
+                colorBar.style.height = height + "px";
+                colorBar.style.maxHeight = '50px';
                 colorBar.style.width = newWidth + "px";
-                colorBar.style.height = "10px";
+                colorBar.style.transition = 'width 2s';
                 raceBar.appendChild(colorBar);
             });
-            if (maxCount >= 100) {
-            }
         }
     </script>
 </head>
 
 <body>
     <div class="container">
-        <a href="index.html">Arpoja</a>
+        <a id="navLink" href="index.html">Arpoja</a>
         <div id="selectableColors"></div>
         <hr />
         <hr />
-        <div class="colors">
+        <div class="race-controls" id="race-button">
+            <button onclick="startRace()">Ralli</button>
+        </div>
+        <div class="colors" id="colorsContainer">
             <div id="chosenColors"></div>
         </div>
         <hr />
         <hr />
+        <input type="range" min="5" max="6000" step="5" value="1000" id="intervalSlider">
         <div class="race-container">
-            <div class="race-controls">
-                <button onclick="startRace()">Ralli</button>
-            </div>
+            <div class="race-result" id="raceResult"></div>
             <div class="race-bar">
                 <!-- Race bars will be added here dynamically -->
             </div>
-            <div class="race-result" id="raceResult"></div>
         </div>
         <script>
         </script>
