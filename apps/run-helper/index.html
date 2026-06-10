@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Galloway Run/Walk Timer</title>
+    <title>Galloway Cadence Timer</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1D4ED8">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,11 +18,11 @@
     <header class="p-4 bg-gray-800 flex justify-between items-center shadow-md border-b border-gray-700">
         <div>
             <h1 class="text-xl font-bold tracking-tight text-blue-500">Galloway Engine</h1>
-            <p id="spotifyStatus" class="text-xs text-gray-400">Spotify Disconnected</p>
+            <p class="text-xs text-gray-400">Local Audio Metronome Active</p>
         </div>
-        <button id="spotifyBtn" class="bg-green-500 hover:bg-green-400 text-black text-xs font-bold py-2 px-4 rounded-full flex items-center transition-colors">
-            Connect Spotify
-        </button>
+        <div class="bg-blue-600/20 text-blue-400 border border-blue-500/30 text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded-md font-bold">
+            PWA Ready
+        </div>
     </header>
 
     <main class="flex-grow p-4 flex flex-col justify-between max-w-md mx-auto w-full space-y-6">
@@ -32,7 +32,7 @@
             <div id="timeRemaining" class="text-8xl font-mono font-bold tracking-tight tabular-nums">00:00</div>
             <div class="text-center">
                 <p id="totalTimeElapsed" class="text-gray-400 text-xl font-medium">Total Execution: 00:00</p>
-                <p id="upNextTrack" class="text-xs text-green-400 mt-2 italic font-mono"></p>
+                <p id="activeBpmDisplay" class="text-xs text-green-400 mt-2 font-mono tracking-wider uppercase"></p>
             </div>
             
             <div class="flex space-x-4 w-full pt-6">
@@ -75,11 +75,11 @@
 
             <section class="bg-gray-800 p-4 rounded-xl border border-gray-700 flex justify-between items-center">
                 <div class="flex flex-col">
-                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">Target Music Cadence</label>
-                    <p class="text-xs text-gray-500">Auto-injects to playlist query</p>
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wide">Metronome Cadence</label>
+                    <p class="text-xs text-gray-500">Audio tick rate while running</p>
                 </div>
                 <div class="flex items-center space-x-2 font-mono">
-                    <input type="number" id="spotifyBpm" value="165" min="60" max="220" class="bg-gray-900 text-center text-xl font-bold rounded p-2 w-20 border border-gray-600 focus:outline-none focus:border-green-500 text-green-400">
+                    <input type="number" id="metronomeBpm" value="165" min="30" max="240" class="bg-gray-900 text-center text-xl font-bold rounded p-2 w-20 border border-gray-600 focus:outline-none focus:border-green-500 text-green-400">
                     <span class="font-bold text-sm text-gray-400">BPM</span>
                 </div>
             </section>

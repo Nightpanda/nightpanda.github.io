@@ -16,9 +16,6 @@ const presets = [
     { id: 'advanced', label: 'Advanced Core', run: 300, walk: 60 }
 ];
 
-// --- Enter Your Personal Spotify Credentials Here ---
-const SPOTIFY_CLIENT_ID = 'YOUR_SPOTIFY_CLIENT_ID'; 
-
 // --- Application State Context ---
 let activeIntervalConfig = { run: 60, walk: 60 };
 let isWorkoutRunning = false;
@@ -26,13 +23,18 @@ let isWorkoutPaused = false;
 let currentPhaseType = 'run'; 
 let phaseTimeRemaining = 0;
 let totalTimeElapsed = 0;
-let spotifyAccessToken = null;
+let targetBpm = 165;
 
-// --- Web Audio Hardware Connectors ---
+// --- Web Audio Hardware Connectors & Scheduler State ---
 let audioCtx = null;
 let backgroundKeepAliveOsc = null;
 let backgroundKeepAliveGain = null;
-let trackingEngineClock = null;
+let schedulerIntervalTimer = null;
+
+const SCHEDULER_LOOKAHEAD = 0.4; // How far ahead to schedule audio events (seconds)
+const SCHEDULER_TICK_RATE = 100; // How often to run the scheduling loop (milliseconds)
+let nextMetronomeBeatTime = 0.0;
+let nextLogicalSecondTime = 0.0;
 
 // --- Document UI Object Mapping ---
 const presetContainer = document.getElementById('presetContainer');
@@ -41,22 +43,18 @@ const activeTimerSection = document.getElementById('activeTimerSection');
 const phaseDisplay = document.getElementById('currentPhase');
 const timeDisplay = document.getElementById('timeRemaining');
 const totalTimeDisplay = document.getElementById('totalTimeElapsed');
-const spotifyBtn = document.getElementById('spotifyBtn');
-const spotifyStatus = document.getElementById('spotifyStatus');
-const upNextTrack = document.getElementById('upNextTrack');
+const activeBpmDisplay = document.getElementById('activeBpmDisplay');
 
 // --- Process Presets Grid Interface ---
 presets.forEach((preset, index) => {
     const btn = document.createElement('button');
     btn.className = 'preset-card bg-gray-800 hover:bg-gray-700 text-left p-3 rounded-xl border border-gray-700 transition-all active:scale-95';
-    btn.dataset.run = preset.run;
-    btn.dataset.walk = preset.walk;
     btn.innerHTML = `
         <div class="font-bold text-sm text-gray-200 tracking-tight">${preset.label}</div>
         <div class="text-xs font-mono text-gray-400 mt-0.5">${formatTime(preset.run)} Run / ${formatTime(preset.walk)} Walk</div>
     `;
-    btn.onclick = (e) => {
-        document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('border-blue-500', 'bg-gray-750'));
+    btn.onclick = () => {
+        document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('border-blue-500'));
         btn.classList.add('border-blue-500');
         activeIntervalConfig = { run: preset.run, walk: preset.walk };
         
@@ -76,7 +74,7 @@ function formatTime(totalSeconds) {
     return `${m}:${s}`;
 }
 
-// --- Audio Generation Core (Screen-Locked Background Hack) ---
+// --- Audio Generation Core (Screen-Locked Background System) ---
 function spinUpAudioContext() {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -84,12 +82,12 @@ function spinUpAudioContext() {
     if (audioCtx.state === 'suspended') {
         audioCtx.resume();
     }
-    // Continuous sub-audible hum pipeline preventing mobile background OS suspension threads
+    // Low frequency sub-audible pipeline keeps mobile OS thread from sleeping
     if (!backgroundKeepAliveOsc) {
         backgroundKeepAliveOsc = audioCtx.createOscillator();
         backgroundKeepAliveGain = audioCtx.createGain();
-        backgroundKeepAliveOsc.frequency.setValueAtTime(25, audioCtx.currentTime); // Low frequency hum
-        backgroundKeepAliveGain.gain.setValueAtTime(0.001, audioCtx.currentTime); // Mimic pure silence securely
+        backgroundKeepAliveOsc.frequency.setValueAtTime(25, audioCtx.currentTime); 
+        backgroundKeepAliveGain.gain.setValueAtTime(0.001, audioCtx.currentTime); 
         backgroundKeepAliveOsc.connect(backgroundKeepAliveGain);
         backgroundKeepAliveGain.connect(audioCtx.destination);
         backgroundKeepAliveOsc.start();
@@ -108,49 +106,121 @@ function tearDownAudioContext() {
     }
 }
 
-function emitChime(type) {
-    if (!audioCtx) return;
+// Schedules a wooden block sound for the metronome cadence track
+function scheduleMetronomeTick(time) {
+    // Only tick the metronome during the 'run' phase
+    if (currentPhaseType !== 'run') return;
+
     const osc = audioCtx.createOscillator();
-    const targetGain = audioCtx.createGain();
-    osc.connect(targetGain);
-    targetGain.connect(audioCtx.destination);
+    const gainNode = audioCtx.createGain();
+    
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(1000, time); // Crisp percussive pop
+    
+    gainNode.gain.setValueAtTime(0.2, time);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+    
+    osc.start(time);
+    osc.stop(time + 0.05);
+}
+
+// Schedules high-contrast interval shift chimes
+function schedulePhaseChime(type, time) {
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
     
     if (type === 'run') {
-        // Double High Beep for RUN transitions
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(1200, audioCtx.currentTime + 0.12);
-        targetGain.gain.setValueAtTime(0.8, audioCtx.currentTime);
-        targetGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-        osc.start(audioCtx.currentTime);
-        osc.stop(audioCtx.currentTime + 0.40);
+        // High double-beep alerting you to pick up the pace
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, time);
+        osc.frequency.setValueAtTime(1200, time + 0.12);
+        gainNode.gain.setValueAtTime(0.7, time);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+        osc.start(time);
+        osc.stop(time + 0.45);
     } else {
-        // Low Warning Drone for WALK transitions
+        // Flat, authoritative structural alert tone signaling your recovery period
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(380, audioCtx.currentTime);
-        targetGain.gain.setValueAtTime(0.6, audioCtx.currentTime);
-        targetGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.7);
-        osc.start(audioCtx.currentTime);
-        osc.stop(audioCtx.currentTime + 0.75);
+        osc.frequency.setValueAtTime(330, time);
+        gainNode.gain.setValueAtTime(0.5, time);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.6);
+        osc.start(time);
+        osc.stop(time + 0.65);
     }
 }
 
-// --- Native Mobile Media Session Integrations ---
+// --- Unified Time Window Scheduler Loop ---
+function runAudioScheduler() {
+    if (!isWorkoutRunning || isWorkoutPaused) return;
+
+    const currentTime = audioCtx.currentTime;
+
+    // Timeline Segment A: Schedule Metronome Cadence Beats
+    const secondsPerBeat = 60.0 / targetBpm;
+    while (nextMetronomeBeatTime < currentTime + SCHEDULER_LOOKAHEAD) {
+        scheduleMetronomeTick(nextMetronomeBeatTime);
+        nextMetronomeBeatTime += secondsPerBeat;
+    }
+
+    // Timeline Segment B: Schedule Logical Time Progression & Transition Alerts
+    while (nextLogicalSecondTime < currentTime + SCHEDULER_LOOKAHEAD) {
+        executeLogicalClockTick(nextLogicalSecondTime);
+        nextLogicalSecondTime += 1.0;
+    }
+}
+
+function executeLogicalClockTick(scheduledTime) {
+    // Process counters
+    phaseTimeRemaining--;
+    totalTimeElapsed++;
+
+    // Look ahead to check boundary swaps
+    if (phaseTimeRemaining <= 0) {
+        currentPhaseType = currentPhaseType === 'run' ? 'walk' : 'run';
+        phaseTimeRemaining = activeIntervalConfig[currentPhaseType];
+        schedulePhaseChime(currentPhaseType, scheduledTime);
+    }
+
+    // Push state metrics safely back to UI indicators
+    // (Happens slightly ahead of time inside the look-ahead window, unnoticeable to runner)
+    updateUIStateDisplays();
+    synchronizeLockScreenMedia();
+}
+
+// --- UI Engine Displays ---
+function updateUIStateDisplays() {
+    timeDisplay.textContent = formatTime(phaseTimeRemaining);
+    totalTimeDisplay.textContent = `Total Execution: ${formatTime(totalTimeElapsed)}`;
+    
+    if (currentPhaseType === 'run') {
+        phaseDisplay.textContent = 'RUN';
+        phaseDisplay.className = 'text-6xl font-extrabold uppercase tracking-widest text-green-400';
+        activeBpmDisplay.textContent = `Metronome Active: ${targetBpm} BPM`;
+    } else {
+        phaseDisplay.textContent = 'WALK';
+        phaseDisplay.className = 'text-6xl font-extrabold uppercase tracking-widest text-blue-400';
+        activeBpmDisplay.textContent = 'Metronome Paused (Walk Recovery)';
+    }
+}
+
 function synchronizeLockScreenMedia() {
     if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
             title: `Phase: ${currentPhaseType.toUpperCase()} (${formatTime(phaseTimeRemaining)})`,
-            artist: 'Galloway Interval Runner',
-            album: `Interval Configuration: ${formatTime(activeIntervalConfig.run)} / ${formatTime(activeIntervalConfig.walk)}`,
+            artist: `Cadence Tracker (${targetBpm} BPM)`,
+            album: `Interval Pattern: ${formatTime(activeIntervalConfig.run)} / ${formatTime(activeIntervalConfig.walk)}`,
             artwork: [{ src: 'https://cdn-icons-png.flaticon.com/512/5219/5219258.png', sizes: '512x512', type: 'image/png' }]
         });
-        
-        navigator.mediaSession.setActionHandler('play', () => handlePauseToggle());
-        navigator.mediaSession.setActionHandler('pause', () => handlePauseToggle());
     }
 }
 
-// --- Workout Execution Loop Mechanics ---
+// --- Input Processing ---
 function readManualInputSettings() {
     const runM = parseInt(document.getElementById('manualRunMin').value) || 0;
     const runS = parseInt(document.getElementById('manualRunSec').value) || 0;
@@ -163,53 +233,11 @@ function readManualInputSettings() {
     if (calculatedRun > 0 && calculatedWalk > 0) {
         activeIntervalConfig = { run: calculatedRun, walk: calculatedWalk };
     }
-}
-
-function processTimerTick() {
-    if (!isWorkoutRunning || isWorkoutPaused) return;
-
-    phaseTimeRemaining--;
-    totalTimeElapsed++;
-
-    if (phaseTimeRemaining <= 0) {
-        currentPhaseType = currentPhaseType === 'run' ? 'walk' : 'run';
-        phaseTimeRemaining = activeIntervalConfig[currentPhaseType];
-        emitChime(currentPhaseType);
-    }
-
-    updateUIStateDisplays();
-    synchronizeLockScreenMedia();
-}
-
-function updateUIStateDisplays() {
-    timeDisplay.textContent = formatTime(phaseTimeRemaining);
-    totalTimeDisplay.textContent = `Total Execution: ${formatTime(totalTimeElapsed)}`;
-    upNextTrack.textContent = `Up Next: ${currentPhaseType === 'run' ? 'WALK segment' : 'RUN segment'}`;
     
-    if (currentPhaseType === 'run') {
-        phaseDisplay.textContent = 'RUN';
-        phaseDisplay.className = 'text-6xl font-extrabold uppercase tracking-widest text-green-400';
-    } else {
-        phaseDisplay.textContent = 'WALK';
-        phaseDisplay.className = 'text-6xl font-extrabold uppercase tracking-widest text-blue-400';
-    }
+    targetBpm = parseInt(document.getElementById('metronomeBpm').value) || 165;
 }
 
-function handlePauseToggle() {
-    isWorkoutPaused = !isWorkoutPaused;
-    const pauseBtn = document.getElementById('pauseBtn');
-    if (isWorkoutPaused) {
-        pauseBtn.textContent = 'Resume';
-        pauseBtn.className = 'flex-1 bg-green-600 hover:bg-green-500 py-4 rounded-xl font-bold text-xl shadow-md transition-colors';
-        if(audioCtx) audioCtx.suspend();
-    } else {
-        pauseBtn.textContent = 'Pause';
-        pauseBtn.className = 'flex-1 bg-yellow-600 hover:bg-yellow-500 py-4 rounded-xl font-bold text-xl shadow-md transition-colors';
-        if(audioCtx) audioCtx.resume();
-    }
-}
-
-// --- Interface Actions / Click Handlers ---
+// --- App Control Flows ---
 document.getElementById('startBtn').addEventListener('click', () => {
     spinUpAudioContext();
     readManualInputSettings();
@@ -224,18 +252,36 @@ document.getElementById('startBtn').addEventListener('click', () => {
     phaseTimeRemaining = activeIntervalConfig.run;
     totalTimeElapsed = 0;
     
-    emitChime('run');
+    // Align internal schedule tracking variables exactly to audio clock start point
+    nextMetronomeBeatTime = audioCtx.currentTime;
+    nextLogicalSecondTime = audioCtx.currentTime;
+    
+    schedulePhaseChime('run', audioCtx.currentTime);
     updateUIStateDisplays();
     synchronizeLockScreenMedia();
     
-    trackingEngineClock = setInterval(processTimerTick, 1000);
-    triggerSpotifyRemoteBpmPlaylist();
+    // Fire up structural engine scheduler loop
+    schedulerIntervalTimer = setInterval(runAudioScheduler, SCHEDULER_TICK_RATE);
 });
 
-document.getElementById('pauseBtn').addEventListener('click', () => handlePauseToggle());
+document.getElementById('pauseBtn').addEventListener('click', (e) => {
+    isWorkoutPaused = !isWorkoutPaused;
+    if (isWorkoutPaused) {
+        e.target.textContent = 'Resume';
+        e.target.className = 'flex-1 bg-green-600 hover:bg-green-500 py-4 rounded-xl font-bold text-xl shadow-md transition-colors';
+        if(audioCtx) audioCtx.suspend();
+    } else {
+        e.target.textContent = 'Pause';
+        e.target.className = 'flex-1 bg-yellow-600 hover:bg-yellow-500 py-4 rounded-xl font-bold text-xl shadow-md transition-colors';
+        if(audioCtx) audioCtx.resume();
+        // Reset timelines to prevent sudden sound bursts when unpausing
+        nextMetronomeBeatTime = audioCtx.currentTime;
+        nextLogicalSecondTime = audioCtx.currentTime;
+    }
+});
 
 document.getElementById('stopBtn').addEventListener('click', () => {
-    clearInterval(trackingEngineClock);
+    clearInterval(schedulerIntervalTimer);
     isWorkoutRunning = false;
     tearDownAudioContext();
     
@@ -247,74 +293,8 @@ document.getElementById('stopBtn').addEventListener('click', () => {
     document.getElementById('pauseBtn').className = 'flex-1 bg-yellow-600 hover:bg-yellow-500 py-4 rounded-xl font-bold text-xl shadow-md transition-colors';
 });
 
-// --- Spotify API Remote Execution Tunnel ---
-function parseIncomingSpotifyTokens() {
-    if (window.location.hash) {
-        const hashParams = {};
-        window.location.hash.substring(1).split('&').forEach(item => {
-            const parts = item.split('=');
-            hashParams[parts[0]] = decodeURIComponent(parts[1]);
-        });
-        
-        if (hashParams.access_token) {
-            spotifyAccessToken = hashParams.access_token;
-            spotifyStatus.textContent = '🟢 Connected to Spotify Remote';
-            spotifyStatus.className = 'text-xs text-green-400 font-medium';
-            spotifyBtn.textContent = 'Disconnect';
-            spotifyBtn.classList.replace('bg-green-500', 'bg-gray-700');
-            spotifyBtn.classList.replace('text-black', 'text-gray-300');
-            window.location.hash = ''; // Clean up access tokens visibility from browser URL
-        }
-    }
+// Setup Media Session hardware command hooks to catch lock screen pause taps
+if ('mediaSession' in navigator) {
+    navigator.mediaSession.setActionHandler('play', () => document.getElementById('pauseBtn').click());
+    navigator.mediaSession.setActionHandler('pause', () => document.getElementById('pauseBtn').click());
 }
-
-spotifyBtn.addEventListener('click', () => {
-    if (spotifyAccessToken) {
-        // Disconnect Routine
-        spotifyAccessToken = null;
-        spotifyStatus.textContent = 'Spotify Disconnected';
-        spotifyStatus.className = 'text-xs text-gray-400';
-        spotifyBtn.textContent = 'Connect Spotify';
-        spotifyBtn.classList.replace('bg-gray-700', 'bg-green-500');
-        spotifyBtn.classList.replace('text-gray-300', 'text-black');
-        return;
-    }
-
-    const redirectUri = window.location.origin + window.location.pathname;
-    const scopes = 'user-modify-playback-state user-read-playback-state';
-    window.location.href = `https://accounts.spotify.com/authorize?client_id=$${SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}`;
-});
-
-async function triggerSpotifyRemoteBpmPlaylist() {
-    if (!spotifyAccessToken) return;
-    
-    const targetBpmValue = document.getElementById('spotifyBpm').value || 165;
-    const searchQuery = `${targetBpmValue} BPM Running`;
-    
-    try {
-        // Step 1: Query for an optimized matching public playlist
-        const searchResponse = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(searchQuery)}&type=playlist&limit=1`, {
-            headers: { 'Authorization': `Bearer ${spotifyAccessToken}` }
-        });
-        const searchData = await searchResponse.json();
-        
-        if (searchData.playlists && searchData.playlists.items.length > 0) {
-            const chosenPlaylistUri = searchData.playlists.items[0].uri;
-            
-            // Step 2: Push remote control instruction to the active mobile player state instance
-            await fetch('https://api.spotify.com/v1/me/player/play', {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${spotifyAccessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ context_uri: chosenPlaylistUri })
-            });
-        }
-    } catch (err) {
-        console.error("Spotify Remote Control execution instruction failure: ", err);
-    }
-}
-
-// Read authentication payload when returning via Spotify Auth redirection rules
-parseIncomingSpotifyTokens();
