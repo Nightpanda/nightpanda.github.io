@@ -1,0 +1,17 @@
+{
+  "short_name": "GallowayTimer",
+  "name": "Galloway Run Walk Interval Timer",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/5219/5219258.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#111827",
+  "theme_color": "#1D4ED8",
+  "display": "standalone",
+  "orientation": "portrait"
+}
