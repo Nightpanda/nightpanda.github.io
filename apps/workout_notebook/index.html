@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#020617">
+  <title>Minimal Workout Runner</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #020617;
+      --card: #0f172a;
+      --panel: #111c31;
+      --button: #1e293b;
+      --muted: #94a3b8;
+      --blue: #0284c7;
+      --green: #052e24
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: #fff;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      -webkit-tap-highlight-color: transparent
+    }
+
+    button {
+      font: inherit;
+      touch-action: manipulation;
+      cursor: pointer
+    }
+
+    .wrap {
+      width: min(100%, 560px);
+      margin: auto;
+      padding: 20px 14px calc(28px + env(safe-area-inset-bottom))
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 20px;
+      margin: 14px 0
+    }
+
+    .done {
+      background: var(--green);
+      outline: 1px solid #14532d
+    }
+
+    .eyebrow {
+      color: #38bdf8;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase
+    }
+
+    h1 {
+      margin: 6px 0;
+      font-size: clamp(38px, 11vw, 58px);
+      line-height: 1
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 25px;
+      line-height: 1.1
+    }
+
+    p {
+      color: var(--muted)
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 12px
+    }
+
+    .block {
+      color: #64748b;
+      font-size: 14px
+    }
+
+    .target {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 7px 11px;
+      background: var(--button);
+      border-radius: 999px;
+      color: #cbd5e1;
+      font-weight: 700
+    }
+
+    .weight {
+      margin-top: 18px;
+      padding: 14px;
+      background: #081224;
+      border-radius: 18px
+    }
+
+    .readout {
+      text-align: center
+    }
+
+    .readout strong {
+      font-size: 32px
+    }
+
+    .readout span {
+      margin-left: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      text-transform: uppercase
+    }
+
+    .weight-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 13px
+    }
+
+    .weight-step {
+      display: grid;
+      gap: 7px
+    }
+
+    .weight-step button,
+    .rep-step button {
+      min-height: 60px;
+      border: 0;
+      border-radius: 15px;
+      background: var(--button);
+      color: #fff;
+      font-size: 31px;
+      font-weight: 850
+    }
+
+    .weight-step span {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800
+    }
+
+    .rep-step {
+      display: grid;
+      grid-template-columns: 72px 1fr 72px;
+      gap: 10px;
+      margin-top: 15px
+    }
+
+    .rep-readout {
+      min-height: 64px;
+      background: var(--panel);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center
+    }
+
+    .rep-readout strong {
+      font-size: 29px
+    }
+
+    .rep-readout span {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .09em
+    }
+
+    .sets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 34px;
+      margin: 15px 0
+    }
+
+    .pill {
+      background: var(--button);
+      color: #cbd5e1;
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 14px
+    }
+
+    .primary,
+    .record,
+    .next,
+    .secondary {
+      width: 100%;
+      border: 0;
+      border-radius: 17px;
+      font-weight: 850
+    }
+
+    .primary,
+    .next {
+      min-height: 62px;
+      background: #fff;
+      color: #020617;
+      font-size: 19px
+    }
+
+    .record {
+      min-height: 58px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 18px
+    }
+
+    .secondary {
+      min-height: 48px;
+      margin-top: 12px;
+      background: #172033;
+      color: #cbd5e1
+    }
+
+    .next:disabled {
+      opacity: .28;
+      cursor: default
+    }
+
+    .finish {
+      text-align: center;
+      padding-top: 24vh
+    }
+
+    @media(max-width:370px) {
+      .weight-grid {
+        gap: 5px
+      }
+
+      .weight-step button {
+        min-height: 54px
+      }
+
+      .card {
+        padding: 16px
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script>
+    const PROGRAM = [
+      {
+        id: 'A', blocks: [
+          { type: 'single', exercises: [{ name: 'Conventional Deadlift', weight: 90, unit: 'kg', sets: 2, min: 4, max: 6 }] },
+          { type: 'superset', exercises: [{ name: 'Incline Dumbbell Press', weight: 20, unit: 'kg', sets: 3, min: 6, max: 10 }, { name: 'Chest-Supported Row', weight: 40, unit: 'kg', sets: 3, min: 6, max: 10 }] },
+          { type: 'superset', exercises: [{ name: 'Supported Split Squat', weight: 10, unit: 'kg', sets: 2, min: 8, max: 12 }, { name: 'Leg Curl', weight: 30, unit: 'kg', sets: 2, min: 8, max: 15 }] },
+          { type: 'single', exercises: [{ name: 'Calf Raise', weight: 40, unit: 'kg', sets: 2, min: 10, max: 15 }] }
+        ]
+      },
+      {
+        id: 'B', blocks: [
+          { type: 'single', exercises: [{ name: 'Machine Hack Squat', weight: 90, unit: 'kg', sets: 3, min: 6, max: 10 }] },
+          { type: 'superset', exercises: [{ name: 'Pull-Up', weight: 0, unit: 'kg added', sets: 3, min: 6, max: 10 }, { name: 'One-Arm Landmine Press', weight: 20, unit: 'kg', sets: 3, min: 6, max: 10 }] },
+          { type: 'single', exercises: [{ name: 'Romanian Deadlift', weight: 60, unit: 'kg', sets: 2, min: 6, max: 10 }] },
+          { type: 'superset', exercises: [{ name: 'Leg Extension', weight: 40, unit: 'kg', sets: 2, min: 10, max: 15 }, { name: 'Cable Anti-Rotation Press', weight: 15, unit: 'kg', sets: 2, min: 8, max: 12 }] }
+        ]
+      },
+      {
+        id: 'C', blocks: [
+          { type: 'single', exercises: [{ name: 'Leg Press', weight: 100, unit: 'kg', sets: 3, min: 8, max: 12 }] },
+          { type: 'superset', exercises: [{ name: 'Machine Chest Press', weight: 40, unit: 'kg', sets: 3, min: 6, max: 10 }, { name: 'One-Arm Cable Row', weight: 30, unit: 'kg', sets: 3, min: 8, max: 12 }] },
+          { type: 'superset', exercises: [{ name: 'Pull-Up', weight: 0, unit: 'kg added', sets: 2, min: 6, max: 10 }, { name: 'Leg Curl', weight: 30, unit: 'kg', sets: 2, min: 8, max: 15 }] },
+          { type: 'single', exercises: [{ name: 'Lateral Raise', weight: 10, unit: 'kg', sets: 2, min: 10, max: 20 }] }
+        ]
+      }
+    ];
+    const STEPS = [0.5, 1.25, 2.5, 5], KEY = 'minimal-workout-runner-v4';
+    let state = load();
+    function load() { try { return JSON.parse(localStorage.getItem(KEY)) || { next: 0, active: null, logs: [] } } catch { return { next: 0, active: null, logs: [] } } }
+    function save() { localStorage.setItem(KEY, JSON.stringify(state)) }
+    function makeActive(i) { return { workoutIndex: i, startedAt: new Date().toISOString(), block: 0, results: PROGRAM[i].blocks.map(b => b.exercises.map(e => ({ name: e.name, weight: e.weight, unit: e.unit, reps: e.min, sets: [] }))) } }
+    function fmt(n) { return Number(Number(n).toFixed(2)).toString() }
+    function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) }
+    function render() { const app = document.getElementById('app'); if (state.finished) { app.innerHTML = `<main class="wrap finish"><div class="eyebrow">Workout complete</div><h1>Get out of the gym.</h1><p>Next time: Workout ${PROGRAM[state.next].id}</p><button class="primary" onclick="dismiss()">Done</button></main>`; return } if (!state.active) { const w = PROGRAM[state.next]; app.innerHTML = `<main class="wrap"><section class="card"><div class="eyebrow">Next</div><h1>Workout ${w.id}</h1><p>Follow the screen. Record working sets only.</p><button class="primary" onclick="start()">Start workout</button><button class="secondary" onclick="exportJSON()">Export JSON</button></section></main>`; return } const a = state.active, w = PROGRAM[a.workoutIndex], b = w.blocks[a.block], r = a.results[a.block], complete = b.exercises.every((e, i) => r[i].sets.length >= e.sets); app.innerHTML = `<main class="wrap"><header class="top"><div><div class="eyebrow">Workout ${w.id}</div><h2>${b.type === 'superset' ? 'Superset' : 'Current exercise'}</h2></div><div class="block">Block ${a.block + 1}/${w.blocks.length}</div></header>${b.exercises.map((e, i) => card(e, r[i], i)).join('')}<button class="next" ${complete ? '' : 'disabled'} onclick="advance()">${a.block === w.blocks.length - 1 ? 'Finish workout' : 'Next exercise'}</button></main>` }
+    function card(e, r, i) { const done = r.sets.length >= e.sets, n = Math.min(r.sets.length + 1, e.sets); return `<section class="card ${done ? 'done' : ''}"><h2>${esc(e.name)}</h2><div class="target">${e.sets} × ${e.min}–${e.max}</div><div class="weight"><div class="readout"><strong>${fmt(r.weight)}</strong><span>${esc(r.unit)}</span></div><div class="weight-grid">${STEPS.map(s => `<div class="weight-step"><button ${done ? 'disabled' : ''} aria-label="Decrease by ${s} kg" onclick="weight(${i},-${s})">−</button><span>${s} kg</span><button ${done ? 'disabled' : ''} aria-label="Increase by ${s} kg" onclick="weight(${i},${s})">+</button></div>`).join('')}</div></div><div class="rep-step"><button ${done ? 'disabled' : ''} onclick="reps(${i},-1)">−</button><div class="rep-readout"><strong>${r.reps}</strong><span>${done ? 'complete' : `set ${n} reps`}</span></div><button ${done ? 'disabled' : ''} onclick="reps(${i},1)">+</button></div><div class="sets">${r.sets.map(s => `<span class="pill">${fmt(s.weight)} × ${s.reps}</span>`).join('')}</div><button class="record" ${done ? 'disabled' : ''} onclick="record(${i})">${done ? 'Exercise complete' : `Record set ${n}`}</button></section>` }
+    function start() { state.active = makeActive(state.next); save(); render() }
+    function weight(i, d) { const r = state.active.results[state.active.block][i]; r.weight = Math.max(0, Math.round((r.weight + d) * 100) / 100); save(); render() }
+    function reps(i, d) { const r = state.active.results[state.active.block][i]; r.reps = Math.max(0, r.reps + d); save(); render() }
+    function record(i) { const a = state.active, e = PROGRAM[a.workoutIndex].blocks[a.block].exercises[i], r = a.results[a.block][i]; if (r.sets.length >= e.sets) return; r.sets.push({ set: r.sets.length + 1, weight: r.weight, unit: r.unit, reps: r.reps, recordedAt: new Date().toISOString() }); save(); render() }
+    function advance() { const a = state.active, w = PROGRAM[a.workoutIndex], b = w.blocks[a.block]; if (!b.exercises.every((e, i) => a.results[a.block][i].sets.length >= e.sets)) return; if (a.block < w.blocks.length - 1) { a.block++; save(); render(); return } state.logs.push({ id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), workoutId: w.id, startedAt: a.startedAt, completedAt: new Date().toISOString(), results: a.results }); state.next = (a.workoutIndex + 1) % PROGRAM.length; state.active = null; state.finished = true; save(); render() }
+    function dismiss() { state.finished = false; save(); render() }
+    function exportJSON() { const data = { schemaVersion: 1, exportedAt: new Date().toISOString(), program: PROGRAM, sessions: state.logs }, blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = `workout-log-${new Date().toISOString().slice(0, 10)}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000) }
+    render();
+  </script>
+</body>
+
+</html>
